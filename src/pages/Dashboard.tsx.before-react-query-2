@@ -1,0 +1,359 @@
+import { useEffect, useState } from 'react';
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  MoreHorizontal,
+  PackageCheck,
+  ShoppingBag,
+  Truck,
+  UsersRound,
+  Loader2,
+} from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+
+interface DashboardStats {
+  active_customers: { value: string; change: string; period: string };
+  orders_this_month: { value: string; change: string; period: string };
+  revenue: { value: string; change: string; period: string };
+  deliveries_today: { value: string; change: string; period: string };
+}
+
+interface NeedsAttentionItem {
+  title: string;
+  description: string;
+  count: number;
+}
+
+interface NeedsAttentionData {
+  payment_reviews: NeedsAttentionItem;
+  nutrition_reviews: NeedsAttentionItem;
+  procurement: NeedsAttentionItem;
+}
+
+interface RecentOrder {
+  id: string;
+  customer_name: string;
+  plan_details: string;
+  amount: string;
+  payment_status: string;
+  order_status: string;
+}
+
+interface DashboardApiResponse {
+  stats: DashboardStats;
+  needs_attention?: NeedsAttentionData;
+  recent_orders: RecentOrder[];
+}
+
+export default function Dashboard() {
+  const [data, setData] = useState<DashboardApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardSummary = async () => {
+      try {
+        setLoading(true);
+        const token =
+          localStorage.getItem('token') ||
+          localStorage.getItem('auth_token') ||
+          localStorage.getItem('admin_token');
+
+        const response = await fetch('/api/v1/dashboard/summary', {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard summary.');
+        }
+
+        const result: DashboardApiResponse = await response.json();
+        setData(result);
+      } catch (err: any) {
+        setError(err.message || 'An error occurred while loading data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardSummary();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        {error || 'Failed to load dashboard data.'}
+      </div>
+    );
+  }
+
+  const statCards = [
+    {
+      label: 'Active customers',
+      value: data.stats.active_customers?.value ?? '0',
+      delta: data.stats.active_customers?.change ?? '+0%',
+      period: data.stats.active_customers?.period ?? 'vs last month',
+      Icon: UsersRound,
+    },
+    {
+      label: 'Orders this month',
+      value: data.stats.orders_this_month?.value ?? '0',
+      delta: data.stats.orders_this_month?.change ?? '+0%',
+      period: data.stats.orders_this_month?.period ?? 'vs last month',
+      Icon: ShoppingBag,
+    },
+    {
+      label: 'Revenue',
+      value: data.stats.revenue?.value ?? 'ETB 0.00',
+      delta: data.stats.revenue?.change ?? '+0%',
+      period: data.stats.revenue?.period ?? 'vs last month',
+      Icon: CreditCard,
+    },
+    {
+      label: 'Deliveries today',
+      value: data.stats.deliveries_today?.value ?? '0',
+      delta: data.stats.deliveries_today?.change ?? '+0%',
+      period: data.stats.deliveries_today?.period ?? 'vs yesterday',
+      Icon: Truck,
+    },
+  ];
+
+  const needsAttentionList = [
+    {
+      title: data.needs_attention?.payment_reviews?.title ?? 'Payment reviews',
+      desc: data.needs_attention?.payment_reviews?.description ?? '0 bank transfers awaiting verification',
+      Icon: CreditCard,
+    },
+    {
+      title: data.needs_attention?.nutrition_reviews?.title ?? 'Nutrition reviews',
+      desc: data.needs_attention?.nutrition_reviews?.description ?? '0 plans waiting for approval',
+      Icon: CheckCircle2,
+    },
+    {
+      title: data.needs_attention?.procurement?.title ?? 'Procurement',
+      desc: data.needs_attention?.procurement?.description ?? '0 purchase orders need review',
+      Icon: PackageCheck,
+    },
+  ];
+
+  const getStatusBadgeStyle = (status: string) => {
+    const normalized = status.toLowerCase().trim();
+
+    if (normalized === 'unpaid' || normalized.includes('failed') || normalized.includes('cancelled')) {
+      return 'bg-red-50 text-red-700';
+    }
+
+    if (normalized.includes('pending') || normalized.includes('processing')) {
+      return 'bg-amber-50 text-amber-700';
+    }
+
+    if (normalized === 'paid' || normalized.includes('completed')) {
+      return 'bg-emerald-50 text-emerald-700';
+    }
+
+    return 'bg-slate-100 text-slate-700';
+  };
+
+  return (
+    <div className="space-y-7">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-1 text-sm font-medium text-emerald-600">
+            {new Date().toLocaleDateString('en-GB', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+
+          <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">
+            Good afternoon, Super Admin
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Here’s what needs your attention across the platform.
+          </p>
+        </div>
+
+        <NavLink
+          to="/reports"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+        >
+          <ArrowUpRight size={16} />
+          View reports
+        </NavLink>
+      </div>
+
+      {/* Dynamic Stat Cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map(({ label, value, delta, period, Icon }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,.03)]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-700">
+                <Icon size={18} />
+              </div>
+
+              <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                {delta}
+              </span>
+            </div>
+
+            <div className="mt-5 text-[26px] font-semibold tracking-tight">
+              {value}
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500">
+              {label} <span className="text-slate-400">· {period}</span>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.55fr_.9fr]">
+        {/* Dynamic Orders Table */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold">Recent orders</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Latest customer activity
+              </p>
+            </div>
+
+            <NavLink
+              to="/orders"
+              className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+            >
+              View all
+            </NavLink>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Order</th>
+                  <th className="px-5 py-3 font-semibold">Customer</th>
+                  <th className="px-5 py-3 font-semibold">Amount</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {data.recent_orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-6 text-center text-xs text-slate-500">
+                      No recent orders available.
+                    </td>
+                  </tr>
+                ) : (
+                  data.recent_orders.map((o) => (
+                    <tr key={o.id} className="border-t border-slate-100">
+                      <td className="px-5 py-4">
+                        <div className="font-semibold text-slate-800">
+                          {o.id}
+                        </div>
+                        <div className="mt-0.5 text-xs text-slate-400">
+                          {o.plan_details}
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-600">
+                        {o.customer_name}
+                      </td>
+
+                      <td className="px-5 py-4 font-medium">{o.amount}</td>
+
+                      <td className="px-5 py-4">
+                        <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold ${getStatusBadgeStyle(o.payment_status)}`}>
+                          {o.payment_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Sidebar Cards */}
+        <div className="space-y-5">
+          {/* Dynamic Needs Attention */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,.03)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold">Needs attention</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Items requiring an action
+                </p>
+              </div>
+
+              <MoreHorizontal size={18} className="text-slate-400" />
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {needsAttentionList.map(({ title, desc, Icon }) => (
+                <div
+                  key={title}
+                  className="flex items-center gap-3 rounded-lg border border-slate-100 p-3"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700">
+                    <Icon size={16} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold">{title}</div>
+                    <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                      {desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-slate-900 p-5 text-white">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Clock3 size={16} />
+              Operations snapshot
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-2xl font-semibold">96%</div>
+                <div className="mt-1 text-[11px] text-slate-400">
+                  On-time delivery
+                </div>
+              </div>
+
+              <div>
+                <div className="text-2xl font-semibold">4.8/5</div>
+                <div className="mt-1 text-[11px] text-slate-400">
+                  Customer rating
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

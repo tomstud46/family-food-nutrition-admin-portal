@@ -1,0 +1,6 @@
+export type RecipeStatus='draft'|'pending_review'|'active'|'rejected'|'superseded'|'archived';
+export interface RecipeIngredient { ingredient_id:number; name:string; quantity:number|string; unit_of_measure:string; }
+export interface Recipe { id:number; root_id:number; name:string; description:string|null; instructions:string|null; servings:number; price_per_serving:number|string|null; version:number; supersedes_id:number|null; status:RecipeStatus; ingredients:RecipeIngredient[]; allergens:{id:number;name:string}[]; nutrition_per_serving:{calories:number;protein_g:number;carbs_g:number;fat_g:number}; is_frozen_snapshot:boolean; created_by:number; reviewed_by:number|null; reviewed_at:string|null; rejection_reason:string|null; created_at:string; }
+export interface IngredientOption { id:number; name:string; unit_of_measure:string; status:string; }
+export interface Meal { id:number; customer_id:number; scheduled_date:string; meal_slot:string; status:'planned'|'cancelled'|string; created_by:number; recipes:{recipe_id:number;name:string;servings:number|string;allergens:{id:number;name:string}[]|null}[]; created_at:string; }
+export interface Paged<T>{data:T[];meta:{current_page:number;last_page:number;total:number}}

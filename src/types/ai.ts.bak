@@ -1,0 +1,3 @@
+export interface AiTool { name: string; description: string; }
+export interface AiChatMessage { role: 'user' | 'assistant'; content: string; }
+export interface AiToolResult { [key: string]: unknown; }

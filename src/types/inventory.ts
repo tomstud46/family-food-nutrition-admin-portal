@@ -1,0 +1,4 @@
+export type IngredientStatus='pending_review'|'approved'|'rejected'|string;
+export interface Ingredient { id:number; name:string; unit_of_measure:string; calories_per_unit:number|string|null; protein_per_unit_g:number|string|null; carbs_per_unit_g:number|string|null; fat_per_unit_g:number|string|null; quantity_on_hand:number|string; status:IngredientStatus; created_by:number; reviewed_by:number|null; reviewed_at:string|null; rejection_reason:string|null; allergens:{id:number;name:string}[]; updated_at:string; }
+export interface InventoryMovement { id:number; ingredient_id:number; movement_type:'received'|'consumed'|'wasted'|'adjusted'|string; quantity_delta:number|string; resulting_quantity_on_hand:number|string; reason:string|null; recorded_by:number; created_at:string; }
+export interface Paged<T>{data:T[];meta:{current_page:number;last_page:number;total:number}}

@@ -1,0 +1,799 @@
+import { useEffect, useState } from 'react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  RefreshCw,
+  ShieldCheck,
+  X,
+  XCircle,
+} from 'lucide-react';
+import {
+  cancelOrder,
+  createOrder,
+  getOrder,
+  listOrders,
+} from '../api/orders';
+import { listMeals } from '../api/recipes';
+import type { Order } from '../types/orders';
+import { useAuthStore } from '../stores/authStore';
+
+const canAct = (role?: string | null) =>
+  ['super_admin', 'nutritionist'].includes(role || '');
+
+const badge = (status: string) =>
+  ({
+    pending_payment:
+      'border-amber-100 bg-amber-50 text-amber-700',
+    paid:
+      'border-emerald-100 bg-emerald-50 text-emerald-700',
+    cancelled:
+      'border-slate-200 bg-slate-100 text-slate-500',
+  }[status] ||
+    'border-slate-200 bg-white text-slate-600');
+
+const money = (value: number | string) =>
+  `${Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ETB`;
+
+const getErrorMessage = (error: any) =>
+  error?.response?.data?.message ||
+  Object.values(error?.response?.data?.errors || {})
+    ?.flat?.()
+    ?.[0] ||
+  'The request could not be completed.';
+
+export default function Orders() {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  const [customer, setCustomer] = useState('');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [reason, setReason] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [notice, setNotice] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const customerId = Number(customer);
+
+  const orders = useQuery({
+    queryKey: ['orders', customerId, page],
+    queryFn: () => listOrders(customerId, page),
+    enabled: customerId > 0,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const detail = useQuery({
+    queryKey: ['order', selected],
+    queryFn: () => getOrder(selected!),
+    enabled: !!selected,
+  });
+
+  const meals = useQuery({
+    queryKey: ['order-meals', customerId],
+    queryFn: () => listMeals(customerId, 1),
+    enabled: createOpen && customerId > 0,
+    staleTime: 10_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (input: any) => {
+      if (input.action === 'cancel') {
+        return cancelOrder(input.id, input.reason);
+      }
+
+      return createOrder(customerId, input.payload);
+    },
+
+    onSuccess: async (_response, variables) => {
+      if (variables.action === 'create') {
+        setNotice({
+          type: 'success',
+          message: 'Order created successfully.',
+        });
+
+        setCreateOpen(false);
+        setSelected(null);
+
+        await queryClient.invalidateQueries({
+          queryKey: ['orders'],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ['order-meals', customerId],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ['dashboard', 'summary'],
+          refetchType: 'all',
+        });
+      }
+
+      if (variables.action === 'cancel') {
+        setNotice({
+          type: 'success',
+          message: 'Order cancelled successfully.',
+        });
+
+        setSelected(null);
+        setReason('');
+
+        await queryClient.invalidateQueries({
+          queryKey: ['orders'],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ['order', variables.id],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ['dashboard', 'summary'],
+          refetchType: 'all',
+        });
+      }
+    },
+
+    onError: (error: any) => {
+      setNotice({
+        type: 'error',
+        message: getErrorMessage(error),
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!notice) return;
+
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const order = detail.data?.order;
+
+  return (
+    <div className="space-y-6">
+      {notice && (
+        <div
+          className={`fixed right-5 top-5 z-[100] flex max-w-md items-start gap-3 rounded-xl border px-4 py-3 shadow-lg ${
+            notice.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-rose-200 bg-rose-50 text-rose-800'
+          }`}
+        >
+          {notice.type === 'success' ? (
+            <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
+          ) : (
+            <XCircle className="mt-0.5 shrink-0" size={18} />
+          )}
+
+          <div className="flex-1 text-sm font-medium">
+            {notice.message}
+          </div>
+
+          <button
+            onClick={() => setNotice(null)}
+            className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
+      <header>
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[.14em] text-slate-600">
+          <ShieldCheck size={13} />
+          Fulfillment operations
+        </div>
+
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+              Orders
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+              Bundle planned meals into an order, monitor payment state,
+              and cancel eligible orders. Payment remains a separate domain.
+            </p>
+          </div>
+
+          <button
+            disabled={!customerId || !canAct(user?.role)}
+            onClick={() => {
+              setNotice(null);
+              setCreateOpen(true);
+            }}
+            className="h-10 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Create order
+          </button>
+        </div>
+      </header>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <label className="flex-1 text-xs font-semibold text-slate-600">
+            Customer ID
+
+            <input
+              value={customer}
+              onChange={(event) => {
+                setCustomer(
+                  event.target.value.replace(/\D/g, '')
+                );
+                setPage(1);
+                setSelected(null);
+                setNotice(null);
+              }}
+              placeholder="Enter customer ID"
+              inputMode="numeric"
+              className="mt-1 h-10 w-full max-w-sm rounded-lg border border-slate-200 px-3 text-sm"
+            />
+          </label>
+
+          <button
+            onClick={() => orders.refetch()}
+            disabled={!customerId || orders.isFetching}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 disabled:opacity-40"
+          >
+            <RefreshCw
+              size={14}
+              className={orders.isFetching ? 'animate-spin' : ''}
+            />
+            Refresh
+          </button>
+        </div>
+      </section>
+
+      {!customerId ? (
+        <Empty text="Enter a customer ID to inspect orders." />
+      ) : orders.isLoading ? (
+        <Loading />
+      ) : orders.isError ? (
+        <Error message={getErrorMessage(orders.error)} />
+      ) : !orders.data?.data?.some((order) => order.status !== 'cancelled') ? (
+        <Empty text="No orders recorded for this customer." />
+      ) : (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Order</th>
+                  <th className="px-5 py-3">Meals</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {orders.data.data
+                  .filter(
+                    (currentOrder) => currentOrder.status !== 'cancelled'
+                  )
+                  .map((currentOrder) => (
+                  <tr key={currentOrder.id}>
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() =>
+                          setSelected(currentOrder.id)
+                        }
+                        className="font-semibold text-slate-900 hover:underline"
+                      >
+                        Order #{currentOrder.id}
+                      </button>
+
+                      <div className="text-xs text-slate-400">
+                        {new Date(
+                          currentOrder.created_at
+                        ).toLocaleString()}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4 text-slate-600">
+                      {currentOrder.meals.length}
+                    </td>
+
+                    <td className="px-5 py-4 font-medium">
+                      {money(currentOrder.total_amount)}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge(
+                          currentOrder.status
+                        )}`}
+                      >
+                        {currentOrder.status}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      {currentOrder.status !== 'cancelled' &&
+                        canAct(user?.role) && (
+                          <button
+                            onClick={() =>
+                              setSelected(currentOrder.id)
+                            }
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+                          >
+                            Open
+                          </button>
+                        )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Pager
+            page={page}
+            last={orders.data.meta.last_page}
+            setPage={setPage}
+          />
+        </section>
+      )}
+
+      {order && (
+        <OrderDetail
+          order={order}
+          onClose={() => {
+            setSelected(null);
+            setReason('');
+          }}
+          canCancel={
+            canAct(user?.role) &&
+            order.status !== 'cancelled'
+          }
+          reason={reason}
+          setReason={setReason}
+          busy={mutation.isPending}
+          onCancel={() =>
+            mutation.mutate({
+              action: 'cancel',
+              id: order.id,
+              reason: reason.trim(),
+            })
+          }
+        />
+      )}
+
+      {createOpen && (
+        <CreateOrder
+          customerId={customerId}
+          meals={meals.data?.data || []}
+          orders={orders.data?.data || []}
+          loading={meals.isLoading}
+          busy={mutation.isPending}
+          onClose={() => setCreateOpen(false)}
+          onSubmit={(payload: any) =>
+            mutation.mutate({
+              action: 'create',
+              payload,
+            })
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function OrderDetail({
+  order,
+  onClose,
+  canCancel,
+  reason,
+  setReason,
+  busy,
+  onCancel,
+}: any) {
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-950/35 p-4">
+      <div className="mx-auto mt-8 max-h-[88vh] max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Order #{order.id}
+            </div>
+
+            <h2 className="mt-1 text-xl font-semibold">
+              {money(order.total_amount)}
+            </h2>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Stat label="Status" value={order.status} />
+          <Stat
+            label="Customer"
+            value={`#${order.customer_id}`}
+          />
+          <Stat
+            label="Created"
+            value={new Date(
+              order.created_at
+            ).toLocaleString()}
+          />
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold">Meals</h3>
+
+          <div className="mt-2 overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-slate-100">
+                {order.meals.map((meal: any) => (
+                  <tr key={meal.meal_id}>
+                    <td className="px-4 py-3 font-medium">
+                      Meal #{meal.meal_id}
+                    </td>
+
+                    <td className="px-4 py-3 text-slate-500">
+                      {meal.meal_slot}
+                    </td>
+
+                    <td className="px-4 py-3 text-slate-500">
+                      {meal.scheduled_date || '—'}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      {money(meal.price)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {order.notes && (
+          <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+            {order.notes}
+          </div>
+        )}
+
+        {order.cancellation_reason && (
+          <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+            <b>Cancellation reason:</b>{' '}
+            {order.cancellation_reason}
+          </div>
+        )}
+
+        {canCancel && (
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <label className="text-xs font-semibold text-slate-600">
+              Cancellation reason
+
+              <textarea
+                value={reason}
+                onChange={(event) =>
+                  setReason(event.target.value)
+                }
+                rows={3}
+                placeholder="Minimum 5 characters"
+                className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm"
+              />
+            </label>
+
+            <div className="mt-3 flex justify-end">
+              <button
+                disabled={
+                  busy || reason.trim().length < 5
+                }
+                onClick={onCancel}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                <XCircle size={14} />
+                {busy ? 'Cancelling…' : 'Cancel order'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreateOrder({
+  customerId,
+  meals,
+  orders,
+  loading,
+  busy,
+  onClose,
+  onSubmit,
+}: any) {
+  const [ids, setIds] = useState<number[]>([]);
+  const [notes, setNotes] = useState('');
+
+  const activeOrderMealIds = new Set<number>(
+    orders
+      .filter((order: any) =>
+        ['pending_payment', 'paid'].includes(order.status)
+      )
+      .flatMap((order: any) =>
+        (order.meals || []).map((meal: any) => Number(meal.meal_id))
+      )
+      .filter((id: number) => Number.isInteger(id))
+  );
+
+  const planned = meals.filter(
+    (meal: any) => meal.status === 'planned'
+  );
+
+  const available = planned.filter(
+    (meal: any) => !activeOrderMealIds.has(Number(meal.id))
+  );
+
+  const unavailable = planned.filter(
+    (meal: any) => activeOrderMealIds.has(Number(meal.id))
+  );
+
+  useEffect(() => {
+    setIds((current) =>
+      current.filter((id) => !activeOrderMealIds.has(Number(id)))
+    );
+  }, [customerId, meals, orders]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6">
+        <div className="flex justify-between">
+          <h2 className="font-semibold">
+            Create order · Customer #{customerId}
+          </h2>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
+          <AlertTriangle
+            size={14}
+            className="mr-1 inline"
+          />
+          Only planned meals can be ordered. Laravel rechecks
+          ownership and concurrent order eligibility.
+        </div>
+
+        {loading ? (
+          <Loading />
+        ) : planned.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            This customer has no planned meals available for
+            ordering.
+          </div>
+        ) : available.length === 0 ? (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-800">
+              All planned meals for this customer are already
+              included in active orders.
+            </div>
+
+            <div className="space-y-2">
+              {unavailable.map((meal: any) => (
+                <div
+                  key={meal.id}
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 opacity-70"
+                >
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    disabled
+                  />
+
+                  <span className="text-sm font-medium text-slate-600">
+                    Meal #{meal.id} · {meal.meal_slot}
+                  </span>
+
+                  <span className="ml-auto text-xs font-medium text-amber-600">
+                    Already ordered
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {available.map((meal: any) => (
+              <label
+                key={meal.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 p-3"
+              >
+                <input
+                  type="checkbox"
+                  checked={ids.includes(meal.id)}
+                  onChange={(event) =>
+                    setIds(
+                      event.target.checked
+                        ? [...ids, meal.id]
+                        : ids.filter(
+                            (id) => id !== meal.id
+                          )
+                    )
+                  }
+                />
+
+                <span className="text-sm font-medium">
+                  Meal #{meal.id} · {meal.meal_slot}
+                </span>
+
+                <span className="ml-auto text-xs text-slate-400">
+                  {meal.scheduled_date}
+                </span>
+              </label>
+            ))}
+
+            {unavailable.length > 0 && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Already ordered
+                </div>
+
+                <div className="space-y-2">
+                  {unavailable.map((meal: any) => (
+                    <div
+                      key={meal.id}
+                      className="flex items-center gap-3 text-sm text-slate-500"
+                    >
+                      <span>
+                        Meal #{meal.id} · {meal.meal_slot}
+                      </span>
+
+                      <span className="ml-auto text-xs text-amber-600">
+                        Already ordered
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <textarea
+          value={notes}
+          onChange={(event) =>
+            setNotes(event.target.value)
+          }
+          rows={3}
+          placeholder="Notes (optional)"
+          className="mt-4 w-full rounded-xl border border-slate-200 p-3 text-sm"
+        />
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm"
+          >
+            Cancel
+          </button>
+
+          <button
+            disabled={
+              busy ||
+              ids.length === 0 ||
+              loading
+            }
+            onClick={() =>
+              onSubmit({
+                meal_ids: ids,
+                notes: notes || null,
+              })
+            }
+            className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {busy ? 'Creating…' : 'Create order'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: any) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </div>
+
+      <div className="mt-1 text-sm font-semibold text-slate-800">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Pager({
+  page,
+  last,
+  setPage,
+}: {
+  page: number;
+  last: number;
+  setPage: (page: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+      <span className="text-xs text-slate-400">
+        Page {page} of {last}
+      </span>
+
+      <div className="flex gap-2">
+        <button
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+          className="rounded-lg border p-2 disabled:opacity-30"
+        >
+          <ChevronLeft size={15} />
+        </button>
+
+        <button
+          disabled={page >= last}
+          onClick={() => setPage(page + 1)}
+          className="rounded-lg border p-2 disabled:opacity-30"
+        >
+          <ChevronRight size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
+      <ClipboardList
+        className="mx-auto text-slate-300"
+        size={38}
+      />
+
+      <div className="mt-3">{text}</div>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="p-10 text-center text-sm text-slate-400">
+      Loading…
+    </div>
+  );
+}
+
+function Error({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-10 text-center text-sm text-rose-700">
+      {message}
+    </div>
+  );
+}

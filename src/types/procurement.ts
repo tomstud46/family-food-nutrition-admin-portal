@@ -1,0 +1,5 @@
+export interface Supplier { id:number; name:string; contact_name:string|null; email:string|null; phone:string|null; address:string|null; notes:string|null; updated_at:string; }
+export interface PurchaseOrderLine { ingredient_id:number; ingredient_name:string|null; quantity:number|string; unit_cost:number|string|null; line_total:number|string; }
+export type PurchaseOrderStatus='draft'|'pending_approval'|'approved'|'rejected'|'received'|'cancelled'|string;
+export interface PurchaseOrder { id:number; supplier_id:number; status:PurchaseOrderStatus; expected_delivery_date:string|null; notes:string|null; line_items:PurchaseOrderLine[]; total_cost:number|string|null; created_by:number; approved_by:number|null; approved_at:string|null; rejection_reason:string|null; received_by:number|null; received_at:string|null; cancelled_by:number|null; cancelled_at:string|null; cancellation_reason:string|null; created_at:string; }
+export interface Paged<T>{data:T[];meta:{current_page:number;last_page:number;total:number}}
