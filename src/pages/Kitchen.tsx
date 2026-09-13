@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -27,6 +27,7 @@ import {
 
 import type { KitchenTask } from '../types/kitchen';
 import { useAuthStore } from '../stores/authStore';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 const errorText = (e: any) =>
   e?.response?.data?.message ||
@@ -69,10 +70,12 @@ export default function Kitchen() {
   const [failureReason, setFailureReason] = useState('');
 
   const qc = useQueryClient();
+const pageSize = useAdminPortalPreferencesStore((state) => state.preferences?.page_size ?? 25);
+useEffect(() => { setPage(1); }, [pageSize]);
 
   const list = useQuery({
-    queryKey: ['kitchen-tasks', page],
-    queryFn: () => listKitchenTasks(page),
+    queryKey: ['kitchen-tasks', page, pageSize],
+    queryFn: () => listKitchenTasks(page, pageSize),
   });
 
   const detail = useQuery({

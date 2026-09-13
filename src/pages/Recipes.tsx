@@ -1,9 +1,10 @@
-import { useMemo,useState } from 'react';
+import {useEffect, useMemo,useState} from 'react';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Clock3,FilePenLine,LockKeyhole,Plus,RefreshCw,ShieldCheck,Utensils,XCircle } from 'lucide-react';
 import { approveRecipe,cancelMeal,createMeal,createRecipe,getRecipe,listIngredients,listMeals,listRecipes,rejectRecipe,submitRecipe,updateRecipe } from '../api/recipes';
 import type { Meal,Recipe } from '../types/recipes';
 import { useAuthStore } from '../stores/authStore';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 const badge=(s:string)=>s==='active'||s==='planned'?'border-emerald-100 bg-emerald-50 text-emerald-700':s==='pending_review'||s==='draft'?'border-amber-100 bg-amber-50 text-amber-700':s==='rejected'||s==='cancelled'?'border-rose-100 bg-rose-50 text-rose-700':'border-slate-200 bg-slate-50 text-slate-600';
 const errorText=(e:any)=>e?.response?.data?.message||e?.response?.data?.error||Object.values(e?.response?.data?.errors||{})?.flat?.()?.[0]||'The request could not be completed.';
@@ -11,9 +12,10 @@ const money=(v:any)=>v==null?'—':`${Number(v).toFixed(2)} ETB`;
 
 export default function Recipes(){
  const {user}=useAuthStore(); const role=user?.role; const canCreate=['super_admin','nutritionist','kitchen_operations'].includes(role||''); const canReview=['super_admin','nutritionist'].includes(role||'');
- const [tab,setTab]=useState<'recipes'|'meals'>('recipes'); const [page,setPage]=useState(1); const [customerId,setCustomerId]=useState(''); const [mealPage,setMealPage]=useState(1); const [selected,setSelected]=useState<number|null>(null); const [modal,setModal]=useState<'create'|'edit'|'revision'|'meal'|'reject'|null>(null); const [reason,setReason]=useState(''); const qc=useQueryClient();
- const recipes=useQuery({queryKey:['recipes',page],queryFn:()=>listRecipes(page),enabled:tab==='recipes'}); const ingredients=useQuery({queryKey:['recipe-ingredients'],queryFn:listIngredients,enabled:modal==='create'||modal==='edit'||modal==='revision'});
- const cid=Number(customerId); const meals=useQuery({queryKey:['meals',cid,mealPage],queryFn:()=>listMeals(cid,mealPage),enabled:tab==='meals'&&cid>0});
+ const [tab,setTab]=useState<'recipes'|'meals'>('recipes');
+ const pageSize=useAdminPortalPreferencesStore((state)=>state.preferences?.page_size ?? 25); const [page,setPage]=useState(1); const [customerId,setCustomerId]=useState(''); const [mealPage,setMealPage]=useState(1); const [selected,setSelected]=useState<number|null>(null); const [modal,setModal]=useState<'create'|'edit'|'revision'|'meal'|'reject'|null>(null); const [reason,setReason]=useState(''); const qc=useQueryClient();
+ const recipes=useQuery({queryKey:['recipes',page,pageSize],queryFn:()=>listRecipes(page,pageSize),enabled:tab==='recipes'}); const ingredients=useQuery({queryKey:['recipe-ingredients'],queryFn:listIngredients,enabled:modal==='create'||modal==='edit'||modal==='revision'});
+ const cid=Number(customerId); useEffect(()=>{setPage(1);setMealPage(1)},[pageSize]); const meals=useQuery({queryKey:['meals',cid,mealPage,pageSize],queryFn:()=>listMeals(cid,mealPage,pageSize),enabled:tab==='meals'&&cid>0});
  const refresh=()=>{qc.invalidateQueries({queryKey:['recipes']}); if(cid>0)qc.invalidateQueries({queryKey:['meals',cid]})};
  const mutation=useMutation({mutationFn:async(x:any)=>{switch(x.action){case'create':return createRecipe(x.payload);case'update':return updateRecipe(x.id,x.payload);case'submit':return submitRecipe(x.id);case'approve':return approveRecipe(x.id);case'reject':return rejectRecipe(x.id,x.reason);case'meal':return createMeal(x.customerId,x.payload);case'cancel':return cancelMeal(x.id)}},onSuccess:()=>{setModal(null);setSelected(null);setReason('');refresh()}});
  const activeRecipe=selected?(recipes.data?.data||[]).find(r=>r.id===selected):null;

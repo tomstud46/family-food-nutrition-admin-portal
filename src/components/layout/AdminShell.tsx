@@ -23,10 +23,11 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getUnreadCount } from '../../api/notifications';
 import { useAuthStore } from '../../stores/authStore';
+import { useAdminPortalPreferencesStore } from '../../stores/adminPortalPreferencesStore';
 
 const groups = [
   {
@@ -65,6 +66,7 @@ const groups = [
       ['/support', 'Support', Headphones],
       ['/reports', 'Reports & Analytics', FileBarChart],
       ['/ai', 'Admin AI', ShieldCheck],
+      ['/staff', 'Staff Management', Users],
     ],
   },
 ] as const;
@@ -80,26 +82,62 @@ export default function AdminShell() {
 
   const { user, logout } = useAuthStore();
 
+  const {
+    preferences,
+    load: loadPreferences,
+  } = useAdminPortalPreferencesStore();
+
+  const sidebarCollapsed = preferences?.sidebar_collapsed ?? false;
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    loadPreferences(user.id).catch(() => {
+      // Settings page will expose the error if preferences cannot be loaded.
+    });
+  }, [user?.id, loadPreferences]);
+
+  const visibleGroups = groups.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      ([to]) => to !== '/staff' || user?.role === 'super_admin',
+    ),
+  }));
+
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[264px] border-r border-slate-200 bg-[#0f172a] text-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 border-r border-slate-200 bg-[#0f172a] text-white transition-all duration-200 lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
+        } ${
+          sidebarCollapsed
+            ? 'w-[80px] lg:w-[80px]'
+            : 'w-[264px] lg:w-[264px]'
         }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-[76px] items-center justify-between border-b border-white/10 px-6">
+          <div
+            className={`flex h-[76px] items-center border-b border-white/10 ${
+              sidebarCollapsed
+                ? 'justify-center px-3'
+                : 'justify-between px-6'
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400 font-black text-slate-950">
                 B
               </div>
 
-              <div>
-                <div className="font-semibold tracking-tight">Betnutri</div>
-                <div className="text-[11px] text-slate-400">
-                  Admin Portal
+              {!sidebarCollapsed && (
+                <div>
+                  <div className="font-semibold tracking-tight">Betnutri</div>
+                  <div className="text-[11px] text-slate-400">
+                    Admin Portal
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <button
@@ -112,11 +150,13 @@ export default function AdminShell() {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-5">
-            {groups.map((g) => (
+            {visibleGroups.map((g) => (
               <div key={g.label} className="mb-6">
-                <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">
-                  {g.label}
-                </div>
+                {!sidebarCollapsed && (
+                  <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">
+                    {g.label}
+                  </div>
+                )}
 
                 {g.items.map(([to, label, Icon]) => (
                   <NavLink
@@ -133,7 +173,7 @@ export default function AdminShell() {
                     }
                   >
                     <Icon size={17} strokeWidth={1.8} />
-                    <span>{label}</span>
+                    {!sidebarCollapsed && <span>{label}</span>}
                   </NavLink>
                 ))}
               </div>
@@ -153,7 +193,7 @@ export default function AdminShell() {
               }
             >
               <Settings2 size={17} />
-              <span>Settings</span>
+              {!sidebarCollapsed && <span>Settings</span>}
             </NavLink>
 
             <button
@@ -161,13 +201,17 @@ export default function AdminShell() {
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-400 hover:bg-white/[.06] hover:text-white"
             >
               <LogOut size={17} />
-              <span>Sign out</span>
+              {!sidebarCollapsed && <span>Sign out</span>}
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="lg:pl-[264px]">
+      <div
+        className={`transition-[padding] duration-200 ${
+          sidebarCollapsed ? 'lg:pl-[80px]' : 'lg:pl-[264px]'
+        }`}
+      >
         <header className="sticky top-0 z-30 flex h-[76px] items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
           <button
             className="rounded-lg p-2 hover:bg-slate-100 lg:hidden"

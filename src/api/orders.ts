@@ -1,10 +1,10 @@
 import { http } from './http';
 import type { Paged, Order } from '../types/orders';
 
-export async function listOrders(customerId: number, page = 1) {
+export async function listOrders(customerId: number, page = 1, perPage = 25) {
   return (
     await http.get<Paged<Order>>(
-      `/customers/${customerId}/orders?page=${page}&per_page=25`
+      `/customers/${customerId}/orders?page=${page}&per_page=${perPage}`
     )
   ).data;
 }

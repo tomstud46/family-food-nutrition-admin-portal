@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listSupportTickets, replyToSupportTicket, updateSupportTicketStatus } from '../api/support';
 import type { SupportTicketStatus } from '../types/support';
 import { useAuthStore } from '../stores/authStore';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 const errorText = (e: any) =>
   e?.response?.data?.message ||
@@ -66,14 +67,21 @@ export default function Support() {
   const user = useAuthStore((state) => state.user);
 
   const [page, setPage] = useState(1);
+const pageSize = useAdminPortalPreferencesStore(
+  (state) => state.preferences?.page_size ?? 25,
+);
+
+useEffect(() => {
+  setPage(1);
+}, [pageSize]);
   const [filter, setFilter] = useState<'all' | SupportTicketStatus>('all');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [reply, setReply] = useState('');
   const [error, setError] = useState('');
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['support-tickets', page],
-    queryFn: () => listSupportTickets(page),
+    queryKey: ['support-tickets', page, pageSize],
+    queryFn: () => listSupportTickets(page, pageSize),
   });
 
   const tickets = data?.data ?? [];

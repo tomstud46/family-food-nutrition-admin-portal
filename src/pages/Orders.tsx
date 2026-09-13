@@ -25,6 +25,7 @@ import {
 import { listMeals } from '../api/recipes';
 import type { Order } from '../types/orders';
 import { useAuthStore } from '../stores/authStore';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 const canAct = (role?: string | null) =>
   ['super_admin', 'nutritionist'].includes(role || '');
@@ -56,11 +57,18 @@ const getErrorMessage = (error: any) =>
 export default function Orders() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const pageSize = useAdminPortalPreferencesStore(
+    (state) => state.preferences?.page_size ?? 25,
+  );
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
 
   const customer = searchParams.get('customer') ?? '';
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
   const [selected, setSelected] = useState<number | null>(null);
   const [reason, setReason] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -72,8 +80,8 @@ export default function Orders() {
   const customerId = Number(customer);
 
   const orders = useQuery({
-    queryKey: ['orders', customerId, page],
-    queryFn: () => listOrders(customerId, page),
+    queryKey: ['orders', customerId, page, pageSize],
+    queryFn: () => listOrders(customerId, page, pageSize),
     enabled: customerId > 0,
     staleTime: 0,
     refetchOnMount: 'always',

@@ -5,9 +5,9 @@ import type {
   KitchenTaskResponse,
 } from '../types/kitchen';
 
-export async function listKitchenTasks(page = 1): Promise<KitchenTaskPage> {
+export async function listKitchenTasks(page = 1, perPage = 25): Promise<KitchenTaskPage> {
   const response = await http.get<KitchenTaskPage>(
-    `/kitchen-tasks?page=${page}&per_page=25`,
+    `/kitchen-tasks?page=${page}&per_page=${perPage}`,
   );
 
   return response.data;

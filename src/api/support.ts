@@ -7,9 +7,10 @@ import type {
 
 export async function listSupportTickets(
   page = 1,
+  perPage = 25,
 ): Promise<SupportTicketPage> {
   const response = await http.get<SupportTicketPage>(
-    `/support/tickets?page=${page}&per_page=25`,
+    `/support/tickets?page=${page}&per_page=${perPage}`,
   );
 
   return response.data;

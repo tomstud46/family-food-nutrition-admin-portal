@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ChevronLeft, ChevronRight, Eye, Search, Users } from 'lucide-react';
 import { listCustomers } from '../api/customers';
 import type { Customer } from '../types/customer';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 function formatDate(value: string | null) {
   if (!value) return '—';
@@ -18,10 +20,23 @@ function displayPhone(customer: Customer) {
 export default function Customers() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(Number(params.get('page') || 1), 1);
+  const pageSize = useAdminPortalPreferencesStore(
+    (state) => state.preferences?.page_size ?? 25,
+  );
   const query = params.get('q') || '';
+
+  useEffect(() => {
+    const current = Math.max(Number(params.get('page') || 1), 1);
+
+    if (current !== 1) {
+      const next = new URLSearchParams(params);
+      next.set('page', '1');
+      setParams(next);
+    }
+  }, [pageSize]);
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['customers', page],
-    queryFn: () => listCustomers(page),
+    queryKey: ['customers', page, pageSize],
+    queryFn: () => listCustomers(page, pageSize),
     placeholderData: (previous) => previous,
   });
 
