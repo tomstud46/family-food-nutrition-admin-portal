@@ -376,7 +376,7 @@ export default function Orders() {
           }}
           canCancel={
             canAct(user?.role) &&
-            ['pending_payment', 'paid'].includes(order.status)
+            order.status !== 'cancelled'
           }
           reason={reason}
           setReason={setReason}

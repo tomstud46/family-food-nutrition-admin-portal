@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ChevronLeft, ChevronRight, Eye, Search, Users } from 'lucide-react';
-import { createCustomer, listCustomers } from '../api/customers';
-import type { CreateCustomerPayload, Customer } from '../types/customer';
-import { useAuthStore } from '../stores/authStore';
-import { useAdminPortalPreferencesStore } from '../stores/adminPortalPreferencesStore';
+import { listCustomers } from '../api/customers';
+import type { Customer } from '../types/customer';
+import {useAdminPortalPreferencesStore} from '../stores/adminPortalPreferencesStore';
 
 function formatDate(value: string | null) {
   if (!value) return '—';
@@ -20,22 +19,6 @@ function displayPhone(customer: Customer) {
 
 export default function Customers() {
   const [params, setParams] = useSearchParams();
-  const queryClient = useQueryClient();
-  const user = useAuthStore((state) => state.user);
-  const isSuperAdmin = user?.role === 'super_admin';
-  const [showCreate, setShowCreate] = useState(false);
-
-  const [form, setForm] = useState<CreateCustomerPayload>({
-    name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-    phone: '',
-    date_of_birth: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-  });
   const page = Math.max(Number(params.get('page') || 1), 1);
   const pageSize = useAdminPortalPreferencesStore(
     (state) => state.preferences?.page_size ?? 25,
@@ -51,37 +34,6 @@ export default function Customers() {
       setParams(next);
     }
   }, [pageSize]);
-  const createMutation = useMutation({
-    mutationFn: createCustomer,
-    onSuccess: async () => {
-      setShowCreate(false);
-      setForm({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-        phone: '',
-        date_of_birth: '',
-        address_line1: '',
-        address_line2: '',
-        city: '',
-      });
-      await queryClient.invalidateQueries({ queryKey: ['customers'] });
-    },
-  });
-
-  function submitCreate(event: React.FormEvent) {
-    event.preventDefault();
-    createMutation.mutate({
-      ...form,
-      phone: form.phone?.trim() || undefined,
-      date_of_birth: form.date_of_birth || undefined,
-      address_line1: form.address_line1?.trim() || undefined,
-      address_line2: form.address_line2?.trim() || undefined,
-      city: form.city?.trim() || undefined,
-    });
-  }
-
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['customers', page, pageSize],
     queryFn: () => listCustomers(page, pageSize),
@@ -113,164 +65,10 @@ export default function Customers() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Customers</h1>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Browse customer profiles and open their operational record. Administrative access is enforced by Laravel.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-            <span className="font-semibold text-slate-950">{data?.meta.total ?? '—'}</span> total customers
-          </div>
-
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowCreate((value) => !value)}
-              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              {showCreate ? 'Cancel' : 'Add Customer'}
-            </button>
-          )}
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          <span className="font-semibold text-slate-950">{data?.meta.total ?? '—'}</span> total customers
         </div>
       </header>
-
-      {isSuperAdmin && showCreate && (
-        <form
-          onSubmit={submitCreate}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-        >
-          <h2 className="text-lg font-semibold text-slate-950">
-            Create customer account
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Creates a customer authentication account and linked customer profile.
-          </p>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-medium text-slate-700">
-              Name
-              <input
-                required
-                value={form.name}
-                onChange={(event) =>
-                  setForm({ ...form, name: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Email
-              <input
-                required
-                type="email"
-                value={form.email}
-                onChange={(event) =>
-                  setForm({ ...form, email: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Password
-              <input
-                required
-                type="password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm({ ...form, password: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Confirm password
-              <input
-                required
-                type="password"
-                value={form.password_confirmation}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    password_confirmation: event.target.value,
-                  })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Phone
-              <input
-                value={form.phone}
-                onChange={(event) =>
-                  setForm({ ...form, phone: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Date of birth
-              <input
-                type="date"
-                value={form.date_of_birth}
-                onChange={(event) =>
-                  setForm({ ...form, date_of_birth: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700 md:col-span-2">
-              Address line 1
-              <input
-                value={form.address_line1}
-                onChange={(event) =>
-                  setForm({ ...form, address_line1: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              Address line 2
-              <input
-                value={form.address_line2}
-                onChange={(event) =>
-                  setForm({ ...form, address_line2: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-
-            <label className="text-sm font-medium text-slate-700">
-              City
-              <input
-                value={form.city}
-                onChange={(event) =>
-                  setForm({ ...form, city: event.target.value })
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-slate-400"
-              />
-            </label>
-          </div>
-
-          {createMutation.isError && (
-            <p className="mt-4 text-sm text-red-600">
-              Unable to create the customer account. Check the submitted values.
-            </p>
-          )}
-
-          <div className="mt-5 flex justify-end">
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create Customer'}
-            </button>
-          </div>
-        </form>
-      )}
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between">

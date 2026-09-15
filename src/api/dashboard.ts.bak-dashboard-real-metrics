@@ -3,22 +3,22 @@ import { http } from './http';
 export interface DashboardStats {
   active_customers: {
     value: string;
-    change: string | null;
+    change: string;
     period: string;
   };
   orders_this_month: {
     value: string;
-    change: string | null;
+    change: string;
     period: string;
   };
   revenue: {
     value: string;
-    change: string | null;
+    change: string;
     period: string;
   };
   deliveries_today: {
     value: string;
-    change: string | null;
+    change: string;
     period: string;
   };
 }
@@ -44,20 +44,8 @@ export interface RecentOrder {
   order_status: string;
 }
 
-export interface DashboardOperations {
-  on_time_delivery: {
-    value: number | null;
-    period: string;
-  };
-  delivered_deliveries: {
-    value: number;
-    period: string;
-  };
-}
-
 export interface DashboardApiResponse {
   stats: DashboardStats;
-  operations?: DashboardOperations;
   needs_attention?: NeedsAttentionData;
   recent_orders: RecentOrder[];
 }

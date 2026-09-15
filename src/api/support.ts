@@ -1,5 +1,7 @@
 import { http } from './http';
 import type {
+  CreateSupportTicketPayload,
+  SupportCustomerOption,
   SupportTicket,
   SupportTicketPage,
   SupportTicketResponse,
@@ -45,6 +47,27 @@ export async function updateSupportTicketStatus(
   const response = await http.patch<SupportTicketResponse>(
     `/support/tickets/${id}/status`,
     { status },
+  );
+
+  return response.data.ticket;
+}
+
+export async function searchSupportCustomers(
+  search: string,
+): Promise<SupportCustomerOption[]> {
+  const response = await http.get<{data: SupportCustomerOption[]}>(
+    `/support/tickets/customers?search=${encodeURIComponent(search.trim())}`,
+  );
+
+  return response.data.data;
+}
+
+export async function createSupportTicket(
+  payload: CreateSupportTicketPayload,
+): Promise<SupportTicket> {
+  const response = await http.post<SupportTicketResponse>(
+    '/support/tickets',
+    payload,
   );
 
   return response.data.ticket;

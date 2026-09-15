@@ -10,6 +10,7 @@ import {
   Headphones,
   Home,
   Leaf,
+  LogOut,
   Menu,
   Package,
   Search,
@@ -27,7 +28,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getUnreadCount } from '../../api/notifications';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminPortalPreferencesStore } from '../../stores/adminPortalPreferencesStore';
-import { ROLE_ACCESS, hasRoleAccess } from '../../config/rbac';
 
 const groups = [
   {
@@ -105,36 +105,12 @@ export default function AdminShell() {
     document.documentElement.dataset.adminTheme = theme;
   }, [preferences?.theme]);
 
-  const routeAccess: Record<string, readonly import('../../types/auth').AdminRole[]> = {
-    '/': ROLE_ACCESS.dashboard,
-    '/customers': ROLE_ACCESS.customers,
-    '/households': ROLE_ACCESS.households,
-    '/nutrition': ROLE_ACCESS.nutrition,
-    '/recipes': ROLE_ACCESS.recipes,
-    '/inventory': ROLE_ACCESS.inventory,
-    '/procurement': ROLE_ACCESS.procurement,
-    '/kitchen': ROLE_ACCESS.kitchen,
-    '/orders': ROLE_ACCESS.orders,
-    '/payments': ROLE_ACCESS.payments,
-    '/deliveries': ROLE_ACCESS.deliveries,
-    '/notifications': ROLE_ACCESS.notifications,
-    '/support': ROLE_ACCESS.support,
-    '/reports': ROLE_ACCESS.reports,
-    '/ai': ROLE_ACCESS.ai,
-    '/staff': ROLE_ACCESS.staff,
-  };
-
-  const visibleGroups = groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(([to]) => {
-        const allowedRoles = routeAccess[to];
-        return allowedRoles
-          ? hasRoleAccess(user?.role, allowedRoles)
-          : true;
-      }),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleGroups = groups.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      ([to]) => to !== '/staff' || user?.role === 'super_admin',
+    ),
+  }));
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
@@ -210,6 +186,23 @@ export default function AdminShell() {
             ))}
           </nav>
 
+          <div className="border-t border-white/10 p-3">
+            <NavLink
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
+                  isActive
+                    ? 'bg-white/10 text-white'
+                    : 'text-slate-400 hover:bg-white/[.06] hover:text-white'
+                }`
+              }
+            >
+              <Settings2 size={17} />
+              {!sidebarCollapsed && <span>Settings</span>}
+            </NavLink>
+
+          </div>
         </div>
       </aside>
 
@@ -265,15 +258,6 @@ export default function AdminShell() {
               title="Help and Support"
             >
               <CircleHelp size={19} />
-            </NavLink>
-
-            <NavLink
-              to="/settings"
-              className="rounded-lg p-2.5 text-slate-500 hover:bg-slate-100"
-              aria-label="Settings"
-              title="Settings"
-            >
-              <Settings2 size={19} />
             </NavLink>
 
             <div className="ml-2 hidden h-8 w-px bg-slate-200 sm:block" />

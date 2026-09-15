@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, UserCircle } from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { getProfile, updateProfile } from '../api/profile';
 
@@ -28,7 +28,7 @@ function formatDate(date?: string): string {
 }
 
 export default function Profile() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -158,31 +158,20 @@ export default function Profile() {
         </div>
 
         {!isEditing && (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setSuccess(null);
-                setName(user?.name ?? '');
-                setEmail(user?.email ?? '');
-                setIsEditing(true);
-              }}
-              disabled={isLoadingProfile}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Edit Profile
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-            >
-              <LogOut size={16} />
-              Sign out
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setSuccess(null);
+              setName(user?.name ?? '');
+              setEmail(user?.email ?? '');
+              setIsEditing(true);
+            }}
+            disabled={isLoadingProfile}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Edit Profile
+          </button>
         )}
       </div>
 

@@ -12,9 +12,24 @@ export interface SupportTicketMessage {
   created_at: string;
 }
 
+export interface SupportCustomerOption {
+  id: number;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+}
+
+export interface CreateSupportTicketPayload {
+  customer_id: number;
+  subject: string;
+  description: string;
+}
+
 export interface SupportTicket {
   id: number;
   customer_id: number;
+  created_by: number;
   assigned_to: number | null;
   subject: string;
   description: string;

@@ -27,7 +27,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getUnreadCount } from '../../api/notifications';
 import { useAuthStore } from '../../stores/authStore';
 import { useAdminPortalPreferencesStore } from '../../stores/adminPortalPreferencesStore';
-import { ROLE_ACCESS, hasRoleAccess } from '../../config/rbac';
 
 const groups = [
   {
@@ -105,36 +104,12 @@ export default function AdminShell() {
     document.documentElement.dataset.adminTheme = theme;
   }, [preferences?.theme]);
 
-  const routeAccess: Record<string, readonly import('../../types/auth').AdminRole[]> = {
-    '/': ROLE_ACCESS.dashboard,
-    '/customers': ROLE_ACCESS.customers,
-    '/households': ROLE_ACCESS.households,
-    '/nutrition': ROLE_ACCESS.nutrition,
-    '/recipes': ROLE_ACCESS.recipes,
-    '/inventory': ROLE_ACCESS.inventory,
-    '/procurement': ROLE_ACCESS.procurement,
-    '/kitchen': ROLE_ACCESS.kitchen,
-    '/orders': ROLE_ACCESS.orders,
-    '/payments': ROLE_ACCESS.payments,
-    '/deliveries': ROLE_ACCESS.deliveries,
-    '/notifications': ROLE_ACCESS.notifications,
-    '/support': ROLE_ACCESS.support,
-    '/reports': ROLE_ACCESS.reports,
-    '/ai': ROLE_ACCESS.ai,
-    '/staff': ROLE_ACCESS.staff,
-  };
-
-  const visibleGroups = groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(([to]) => {
-        const allowedRoles = routeAccess[to];
-        return allowedRoles
-          ? hasRoleAccess(user?.role, allowedRoles)
-          : true;
-      }),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleGroups = groups.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      ([to]) => to !== '/staff' || user?.role === 'super_admin',
+    ),
+  }));
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">

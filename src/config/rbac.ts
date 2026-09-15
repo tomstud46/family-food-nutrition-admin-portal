@@ -1,0 +1,79 @@
+import type { AdminRole } from '../types/auth';
+
+export const ROLE_ACCESS = {
+  dashboard: ['super_admin'],
+
+  customers: ['super_admin', 'nutritionist'],
+  households: ['super_admin', 'nutritionist'],
+  nutrition: ['super_admin', 'nutritionist'],
+
+  recipes: ['super_admin', 'nutritionist', 'kitchen_operations'],
+  inventory: ['super_admin', 'nutritionist', 'kitchen_operations', 'procurement'],
+
+  procurement: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  kitchen: ['super_admin', 'nutritionist', 'kitchen_operations'],
+
+  orders: ['super_admin', 'nutritionist'],
+  payments: ['super_admin'],
+  deliveries: ['super_admin', 'logistics'],
+
+  notifications: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  support: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  reports: ['super_admin'],
+
+  // AI remains dynamic until its backend discovery/authorization
+  // behavior is inspected and reconciled.
+  ai: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  profile: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  settings: [
+    'super_admin',
+    'nutritionist',
+    'kitchen_operations',
+    'procurement',
+    'logistics',
+  ],
+
+  staff: ['super_admin'],
+} satisfies Record<string, readonly AdminRole[]>;
+
+export function hasRoleAccess(
+  role: AdminRole | null | undefined,
+  allowedRoles: readonly AdminRole[],
+): boolean {
+  return !!role && allowedRoles.includes(role);
+}

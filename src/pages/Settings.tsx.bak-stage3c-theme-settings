@@ -120,6 +120,14 @@ export default function Settings() {
     };
   }, [user?.id, loadAdminPreferences]);
 
+  useEffect(() => {
+    const theme = preferences?.theme ?? 'system';
+    document.documentElement.dataset.adminTheme = theme;
+
+    return () => {
+      delete document.documentElement.dataset.adminTheme;
+    };
+  }, [preferences?.theme]);
 
   useEffect(() => {
     let cancelled = false;

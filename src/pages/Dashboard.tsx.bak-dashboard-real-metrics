@@ -13,11 +13,8 @@ import {
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { getDashboardSummary } from '../api/dashboard';
-import { useAuthStore } from '../stores/authStore';
 
 export default function Dashboard() {
-  const user = useAuthStore((state) => state.user);
-
   const {
     data,
     isLoading: loading,
@@ -54,28 +51,28 @@ export default function Dashboard() {
     {
       label: 'Active customers',
       value: data.stats.active_customers?.value ?? '0',
-      delta: data.stats.active_customers?.change,
+      delta: data.stats.active_customers?.change ?? '+0%',
       period: data.stats.active_customers?.period ?? 'vs last month',
       Icon: UsersRound,
     },
     {
       label: 'Orders this month',
       value: data.stats.orders_this_month?.value ?? '0',
-      delta: data.stats.orders_this_month?.change,
+      delta: data.stats.orders_this_month?.change ?? '+0%',
       period: data.stats.orders_this_month?.period ?? 'vs last month',
       Icon: ShoppingBag,
     },
     {
       label: 'Revenue',
       value: data.stats.revenue?.value ?? 'ETB 0.00',
-      delta: data.stats.revenue?.change,
+      delta: data.stats.revenue?.change ?? '+0%',
       period: data.stats.revenue?.period ?? 'vs last month',
       Icon: CreditCard,
     },
     {
       label: 'Deliveries today',
       value: data.stats.deliveries_today?.value ?? '0',
-      delta: data.stats.deliveries_today?.change,
+      delta: data.stats.deliveries_today?.change ?? '+0%',
       period: data.stats.deliveries_today?.period ?? 'vs yesterday',
       Icon: Truck,
     },
@@ -131,7 +128,7 @@ export default function Dashboard() {
           </p>
 
           <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">
-            Good afternoon, {user?.name ?? 'Admin'}
+            Good afternoon, Super Admin
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
@@ -160,11 +157,9 @@ export default function Dashboard() {
                 <Icon size={18} />
               </div>
 
-              {delta !== null && delta !== undefined && (
-                <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                  {delta}
-                </span>
-              )}
+              <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                {delta}
+              </span>
             </div>
 
             <div className="mt-5 text-[26px] font-semibold tracking-tight">
@@ -290,22 +285,16 @@ export default function Dashboard() {
 
             <div className="mt-5 grid grid-cols-2 gap-4">
               <div>
-                <div className="text-2xl font-semibold">
-                  {data.operations?.on_time_delivery?.value != null
-                    ? `${data.operations.on_time_delivery.value}%`
-                    : '—'}
-                </div>
+                <div className="text-2xl font-semibold">96%</div>
                 <div className="mt-1 text-[11px] text-slate-400">
                   On-time delivery
                 </div>
               </div>
 
               <div>
-                <div className="text-2xl font-semibold">
-                  {data.operations?.delivered_deliveries?.value ?? 0}
-                </div>
+                <div className="text-2xl font-semibold">4.8/5</div>
                 <div className="mt-1 text-[11px] text-slate-400">
-                  Completed deliveries
+                  Customer rating
                 </div>
               </div>
             </div>
